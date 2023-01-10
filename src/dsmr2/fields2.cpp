@@ -83,6 +83,17 @@ constexpr ObisId p1_version_be::id;
 constexpr char p1_version_be::name_progmem[];
 //constexpr const __FlashStringHelper *p1_version_be::name;
 
+constexpr ObisId peak_pwr_last_q::id;
+constexpr char peak_pwr_last_q::name_progmem[];
+//constexpr const __FlashStringHelper *peak_pwr_last_q::name;
+
+constexpr ObisId highest_peak_pwr::id;
+constexpr char highest_peak_pwr::name_progmem[];
+//constexpr const __FlashStringHelper *highest_peak_pwr::name;
+
+constexpr ObisId highest_peak_pwr_13mnd::id;
+constexpr char highest_peak_pwr_13mnd::name_progmem[];
+
 constexpr ObisId timestamp::id;
 constexpr char timestamp::name_progmem[];
 //constexpr const __FlashStringHelper *timestamp::name;
@@ -90,6 +101,14 @@ constexpr char timestamp::name_progmem[];
 constexpr ObisId equipment_id::id;
 constexpr char equipment_id::name_progmem[];
 //constexpr const __FlashStringHelper *equipment_id::name;
+
+constexpr ObisId energy_delivered_total::id;
+constexpr char energy_delivered_total::name_progmem[];
+//constexpr const __FlashStringHelper *energy_delivered_total::name;
+
+constexpr ObisId energy_returned_total::id;
+constexpr char energy_returned_total::name_progmem[];
+//constexpr const __FlashStringHelper *energy_returned_total::name;
 
 constexpr ObisId energy_delivered_tariff1::id;
 constexpr char energy_delivered_tariff1::name_progmem[];
