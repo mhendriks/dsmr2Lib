@@ -122,6 +122,10 @@ class P1Reader {
       return this->_available;
     }
     
+    uint16_t GetCRC() {
+      return this->crc;
+    }
+    
     /**
      * Check for new data to read. Should be called regularly, such as
      * once every loop. Returns true if a complete message is available
