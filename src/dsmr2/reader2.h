@@ -126,6 +126,12 @@ class P1Reader {
       return this->crc;
     }
     
+    String GetCRC_str() {
+      char buf[5];
+      sprintf(buf,"%04x", this->crc);
+      return buf;
+    }
+    
     /**
      * Check for new data to read. Should be called regularly, such as
      * once every loop. Returns true if a complete message is available
