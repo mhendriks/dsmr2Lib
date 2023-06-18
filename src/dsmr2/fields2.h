@@ -153,11 +153,15 @@ struct DoubleLineTimestampedFixedField : public FixedField<T, _unit, _int_unit> 
     static_cast<T*>(this)->val().timestamp = res.result;
 
     // The timestamp is followed by 3 sets of numerical values, parse them
-    ParseResult<uint32_t> numres = NumParser::parse(0, NULL, res.next, end);
-    if (numres.err)
-      return numres;
+    //fix parse as string because the num value could contain other chars
+	res = StringParser::parse_string(0, 2, res.next, end);
+	if (res.err)
+      return res;
+//     ParseResult<uint32_t> numres = NumParser::parse(0, NULL, res.next, end);
+//     if (numres.err)
+//       return numres;
 
-    numres = NumParser::parse(0, NULL, numres.next, end);
+    ParseResult<uint32_t> numres = NumParser::parse(0, NULL, res.next, end);
     if (res.err)
       return numres;
 
