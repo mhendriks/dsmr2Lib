@@ -72,6 +72,7 @@ class P1Reader {
     P1Reader(Stream *stream, uint8_t req_pin, bool checksum = true)
       : stream(stream), req_pin(req_pin), once(false), state(State::DISABLED_STATE) {
       pinMode(req_pin, OUTPUT);
+      //digitalWrite(req_pin, HIGH);
       digitalWrite(req_pin, LOW);
       this->checksum = checksum;
     }
@@ -95,6 +96,7 @@ class P1Reader {
      *                 periodically.
      */
     void enable(bool once) {
+//      digitalWrite(this->req_pin, LOW);
       digitalWrite(this->req_pin, HIGH);
       this->state = State::WAITING_STATE;
       this->once = once;
@@ -106,7 +108,8 @@ class P1Reader {
      * clear() is called.
      */
     void disable() {
-      digitalWrite(this->req_pin, LOW);
+      //digitalWrite(this->req_pin, HIGH);
+	  digitalWrite(this->req_pin, LOW);
       this->state = State::DISABLED_STATE;
       if (!this->_available)
         this->buffer = "";
@@ -126,9 +129,17 @@ class P1Reader {
       return this->crc;
     }
     
+    String CompleteRaw(){
+		if ( buffer.length() == 0 ) return "";
+
+		char crc_str[5];
+		sprintf(crc_str,"%04X", this->crc);
+		return "/" + buffer + "!" + crc_str;	
+    }
+    
     String GetCRC_str() {
       char buf[5];
-      sprintf(buf,"%04x", this->crc);
+      sprintf(buf,"%04X", this->crc);
       return buf;
     }
     
@@ -166,6 +177,7 @@ class P1Reader {
           }
           else
           {
+          	//no crc check
             this->_available = true;
           }
           if (once)
@@ -264,7 +276,7 @@ class P1Reader {
       CHECKSUM_STATE,
     };
     bool _available;
-    bool once, checksum;
+    bool once, checksum, invert_dtr = false;
     State state;
     String buffer;
     uint16_t crc;

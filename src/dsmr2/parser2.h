@@ -221,6 +221,7 @@ struct NumParser {
     if (unit && *unit) {
       if (num_end >= end || *num_end != '*')
         return res.fail(F("Missing unit"), num_end);
+	  
       const char *unit_start = ++num_end; // skip *
       while(num_end < end && *num_end != ')' && *unit) {
         delay(0); //  yield()
@@ -240,8 +241,8 @@ struct NumParser {
     }
 
     if (num_end >= end || *num_end != ')')
-      return res.fail(F("Extra data"), num_end);
-
+	      return res.fail(F("Extra data"), num_end);
+	
     return res.succeed(value).until(num_end + 1); // Skip )
   }
 };
