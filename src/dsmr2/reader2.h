@@ -268,6 +268,7 @@ class P1Reader {
     
     void ChangeStream(Stream *new_stream){
     	stream = new_stream;
+    	this->clear();
     }
 
   protected:
