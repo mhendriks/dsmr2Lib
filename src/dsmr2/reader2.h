@@ -265,6 +265,10 @@ class P1Reader {
         _available = false;
       }
     }
+    
+    void ChangeStream(Stream *new_stream){
+    	stream = new_stream;
+    }
 
   protected:
     Stream *stream;
