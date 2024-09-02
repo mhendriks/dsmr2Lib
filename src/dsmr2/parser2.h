@@ -204,7 +204,7 @@ struct NumParser {
     if (max_decimals && num_end < end && *num_end == '.') {
       ++num_end;
 
-      while(num_end < end && !strchr("*)", *num_end) && max_decimals--) {
+      while(num_end < end && !strchr("*AVWk)", *num_end) && max_decimals--) { //with some SE meters unit is directly after the value
         delay(0); //  yield()
         if (*num_end < '0' || *num_end > '9')
           return res.fail((const __FlashStringHelper*)INVALID_NUMBER, num_end);
@@ -218,11 +218,14 @@ struct NumParser {
     while(max_decimals--)
       value *= 10;
 
+
     if (unit && *unit) {
-      if (num_end >= end || *num_end != '*')
-        return res.fail(F("Missing unit"), num_end);
-	  
-      const char *unit_start = ++num_end; // skip *
+      if (num_end >= end /*|| *num_end != '*'*/) //not in some SE meters
+		return res.fail(F("Missing unit"), num_end);
+      if ( *num_end == '*' ) {
+		  const char *unit_start = ++num_end; // skip * ... not in some SE meters
+      }
+
       while(num_end < end && *num_end != ')' && *unit) {
         delay(0); //  yield()
         if (*num_end++ != *unit++)
@@ -353,6 +356,9 @@ struct P1Parser {
       if (check_res.err)
         return check_res;
 
+//       USBSerial.print("CALC CRC: ");      USBSerial.printf("%04X\n",crc);
+//       USBSerial.print("check_res.result CRC: "); USBSerial.printf("%04X\n",check_res.result);
+
       // Check CRC
       if (check_res.result != crc)
         return res.fail(F("Checksum mismatch"), data_end + 1);
@@ -405,8 +411,8 @@ struct P1Parser {
         // passed '3' here (which is mandatory for "mode D"
         // communication according to 62956-21), so we also allow
         // that.
-        if (line_start + 3 >= line_end || (line_start[3] != '5' && line_start[3] != '3' && line_start[3] != '-' )  )
-          return res.fail(F("Invalid identification string"), line_start);
+//         if (line_start + 3 >= line_end || (line_start[3] != '5' && line_start[3] != '3' && line_start[3] != '-' && line_start[3] != '9' )  )
+//           return res.fail(F("Invalid identification string"), line_start);
         // Offer it for processing using the all-ones Obis ID, which
         // is not otherwise valid.
         ParseResult<void> tmp = data->parse_line(ObisId(255, 255, 255, 255, 255, 255), line_start, line_end);
