@@ -81,7 +81,7 @@ struct StringField : ParsedField<T> {
 // cannot really do any calculation with those values). So we just parse
 // into a string for now.
 template <typename T>
-struct TimestampField : StringField<T, 13, 13> { };
+struct TimestampField : StringField<T, 12, 13> { };
 
 // Value that is parsed as a three-decimal float, but stored as an
 // integer (by multiplying by 1000). Supports val() (or implicit cast to
