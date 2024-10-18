@@ -479,3 +479,30 @@ struct P1Parser {
 } // namespace dsmr
 
 #endif // DSMR_INCLUDE_PARSER_H
+
+  // Instantaneous active power import/export per phase
+  PARSE_FIELD(instantaneous_active_power_import_l1);
+  PARSE_FIELD(instantaneous_active_power_export_l1);
+  PARSE_FIELD(instantaneous_active_power_import_l2);
+  PARSE_FIELD(instantaneous_active_power_export_l2);
+  PARSE_FIELD(instantaneous_active_power_import_l3);
+  PARSE_FIELD(instantaneous_active_power_export_l3);
+
+  // Instantaneous voltage per phase
+  PARSE_FIELD(instantaneous_voltage_l1);
+  PARSE_FIELD(instantaneous_voltage_l2);
+  PARSE_FIELD(instantaneous_voltage_l3);
+
+  // Instantaneous reactive power import/export per phase
+  PARSE_FIELD(instantaneous_reactive_power_import_l1);
+  PARSE_FIELD(instantaneous_reactive_power_export_l1);
+  PARSE_FIELD(instantaneous_reactive_power_import_l2);
+  PARSE_FIELD(instantaneous_reactive_power_export_l2);
+  PARSE_FIELD(instantaneous_reactive_power_import_l3);
+  PARSE_FIELD(instantaneous_reactive_power_export_l3);
+
+  // Energy data
+  PARSE_FIELD(active_energy_import_total);
+  PARSE_FIELD(active_energy_export_total);
+  PARSE_FIELD(reactive_energy_import_total);
+  PARSE_FIELD(reactive_energy_export_total);
