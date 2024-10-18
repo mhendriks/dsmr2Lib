@@ -497,3 +497,30 @@ DEFINE_FIELD(mbus4_delivered_dbl, TimestampedFixedValue, ObisId(0, 4, 24, 3, 0),
 } // namespace dsmr
 
 #endif // DSMR_INCLUDE_FIELDS_H
+
+/* Instantaneous active power import/export per phase */
+DEFINE_FIELD(instantaneous_active_power_import_l1, FixedValue, ObisId(1, 0, 21, 7, 0), FixedField, units::kW, units::W);
+DEFINE_FIELD(instantaneous_active_power_export_l1, FixedValue, ObisId(1, 0, 22, 7, 0), FixedField, units::kW, units::W);
+DEFINE_FIELD(instantaneous_active_power_import_l2, FixedValue, ObisId(1, 0, 41, 7, 0), FixedField, units::kW, units::W);
+DEFINE_FIELD(instantaneous_active_power_export_l2, FixedValue, ObisId(1, 0, 42, 7, 0), FixedField, units::kW, units::W);
+DEFINE_FIELD(instantaneous_active_power_import_l3, FixedValue, ObisId(1, 0, 61, 7, 0), FixedField, units::kW, units::W);
+DEFINE_FIELD(instantaneous_active_power_export_l3, FixedValue, ObisId(1, 0, 62, 7, 0), FixedField, units::kW, units::W);
+
+/* Instantaneous voltage per phase */
+DEFINE_FIELD(instantaneous_voltage_l1, FixedValue, ObisId(1, 0, 32, 7, 0), FixedField, units::V, units::V);
+DEFINE_FIELD(instantaneous_voltage_l2, FixedValue, ObisId(1, 0, 52, 7, 0), FixedField, units::V, units::V);
+DEFINE_FIELD(instantaneous_voltage_l3, FixedValue, ObisId(1, 0, 72, 7, 0), FixedField, units::V, units::V);
+
+/* Instantaneous reactive power import/export per phase */
+DEFINE_FIELD(instantaneous_reactive_power_import_l1, FixedValue, ObisId(1, 0, 23, 7, 0), FixedField, units::kvar, units::var);
+DEFINE_FIELD(instantaneous_reactive_power_export_l1, FixedValue, ObisId(1, 0, 24, 7, 0), FixedField, units::kvar, units::var);
+DEFINE_FIELD(instantaneous_reactive_power_import_l2, FixedValue, ObisId(1, 0, 43, 7, 0), FixedField, units::kvar, units::var);
+DEFINE_FIELD(instantaneous_reactive_power_export_l2, FixedValue, ObisId(1, 0, 44, 7, 0), FixedField, units::kvar, units::var);
+DEFINE_FIELD(instantaneous_reactive_power_import_l3, FixedValue, ObisId(1, 0, 63, 7, 0), FixedField, units::kvar, units::var);
+DEFINE_FIELD(instantaneous_reactive_power_export_l3, FixedValue, ObisId(1, 0, 64, 7, 0), FixedField, units::kvar, units::var);
+
+/* Energy data */
+DEFINE_FIELD(active_energy_import_total, FixedValue, ObisId(1, 0, 1, 8, 0), FixedField, units::kWh, units::Wh);
+DEFINE_FIELD(active_energy_export_total, FixedValue, ObisId(1, 0, 2, 8, 0), FixedField, units::kWh, units::Wh);
+DEFINE_FIELD(reactive_energy_import_total, FixedValue, ObisId(1, 0, 5, 8, 0), FixedField, units::kvarh, units::varh);
+DEFINE_FIELD(reactive_energy_export_total, FixedValue, ObisId(1, 0, 6, 8, 0), FixedField, units::kvarh, units::varh);
