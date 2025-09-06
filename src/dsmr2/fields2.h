@@ -103,6 +103,8 @@ struct FixedValue {
 // effectively means that the integer value is het value in Wh. To allow
 // automatic printing of these values, both the original unit and the
 // integer unit is passed as a template argument.
+
+//Fix for MCS301 issue with mbus decimal of 4 digits
 template <typename T, const char *_unit, const char *_int_unit>
 struct FixedField : ParsedField<T> {
   ParseResult<void> parse(const char *str, const char *end) {
@@ -247,6 +249,10 @@ struct units {
   static constexpr char kWh[] = "kWh";
   static constexpr char Wh[] = "Wh";
   static constexpr char kW[] = "kW";
+  static constexpr char kVArh[] = "kVArh";
+  static constexpr char VArh[] = "VArh";
+  static constexpr char kVAr[] = "kVAr";
+  static constexpr char VAr[] = "VAr";
   static constexpr char W[] = "W";
   static constexpr char V[] = "V";
   static constexpr char mV[] = "mV";
@@ -298,7 +304,7 @@ DEFINE_FIELD(p1_version, String, ObisId(1, 3, 0, 2, 8), StringField, 2, 2);
 
 
 /* Version information for P1 output (Belgium)*/
-DEFINE_FIELD(p1_version_be, String, ObisId(0, 0, 96, 1, 4), StringField, 0, 5);
+DEFINE_FIELD(p1_version_be, String, ObisId(0, 0, 96, 1, 4), StringField, 0, 96);
 
 /* Belgium  peak power last quarter */
 DEFINE_FIELD(peak_pwr_last_q, FixedValue, ObisId(1, 0, 1, 4, 0), FixedField, units::kW, units::W);
@@ -321,6 +327,29 @@ DEFINE_FIELD(energy_delivered_total, FixedValue, ObisId(1, 0, 1, 8, 0), FixedFie
 /* Meter Reading electricity delivered to client (Tariff 2) in 0,001 kWh */
 DEFINE_FIELD(energy_returned_total, FixedValue, ObisId(1, 0, 2, 8, 0), FixedField, units::kWh, units::Wh);
 //****************
+
+//*************** A1 BE
+DEFINE_FIELD(reactive_energy_q1, FixedValue, ObisId(1, 0, 5, 8, 0), FixedField, units::kVArh, units::VArh);
+DEFINE_FIELD(reactive_energy_q2, FixedValue, ObisId(1, 0, 6, 8, 0), FixedField, units::kVArh, units::VArh);
+DEFINE_FIELD(reactive_energy_q3, FixedValue, ObisId(1, 0, 7, 8, 0), FixedField, units::kVArh, units::VArh);
+DEFINE_FIELD(reactive_energy_q4, FixedValue, ObisId(1, 0, 8, 8, 0), FixedField, units::kVArh, units::VArh);
+
+DEFINE_FIELD(reactive_power_import, FixedValue, ObisId(1, 0, 3, 7, 0), FixedField, units::kVAr, units::VAr);
+DEFINE_FIELD(reactive_power_export, FixedValue, ObisId(1, 0, 4, 7, 0), FixedField, units::kVAr, units::VAr);
+
+// Per-fase reactive power import/export (in kVAr)
+DEFINE_FIELD(reactive_power_l1_import, FixedValue, ObisId(1, 0, 23, 7, 0), FixedField, units::kVAr, units::VAr);
+DEFINE_FIELD(reactive_power_l1_export, FixedValue, ObisId(1, 0, 24, 7, 0), FixedField, units::kVAr, units::VAr);
+DEFINE_FIELD(reactive_power_l2_import, FixedValue, ObisId(1, 0, 43, 7, 0), FixedField, units::kVAr, units::VAr);
+DEFINE_FIELD(reactive_power_l2_export, FixedValue, ObisId(1, 0, 44, 7, 0), FixedField, units::kVAr, units::VAr);
+DEFINE_FIELD(reactive_power_l3_import, FixedValue, ObisId(1, 0, 63, 7, 0), FixedField, units::kVAr, units::VAr);
+DEFINE_FIELD(reactive_power_l3_export, FixedValue, ObisId(1, 0, 64, 7, 0), FixedField, units::kVAr, units::VAr);
+
+DEFINE_FIELD(reactive_energy_total_import, FixedValue, ObisId(1, 0, 3, 8, 0), FixedField, units::kVArh, units::VArh);
+DEFINE_FIELD(reactive_energy_total_export, FixedValue, ObisId(1, 0, 4, 8, 0), FixedField, units::kVArh, units::VArh);
+
+
+//***************
 
 /* Meter Reading electricity delivered to client (Tariff 1) in 0,001 kWh */
 DEFINE_FIELD(energy_delivered_tariff1, FixedValue, ObisId(1, 0, 1, 8, 1), FixedField, units::kWh, units::Wh);

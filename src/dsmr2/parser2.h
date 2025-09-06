@@ -200,24 +200,37 @@ struct NumParser {
       ++num_end;
     }
 
-    // Parse decimal part, if any
-    if (max_decimals && num_end < end && *num_end == '.') {
-      ++num_end;
-
-      while(num_end < end && !strchr("*AVWk)", *num_end) && max_decimals--) { //with some SE meters unit is directly after the value
-        delay(0); //  yield()
-        if (*num_end < '0' || *num_end > '9')
-          return res.fail((const __FlashStringHelper*)INVALID_NUMBER, num_end);
-        value *= 10;
-        value += *num_end - '0';
-        ++num_end;
-      }
-    }
-
-    // Fill in missing decimals with zeroes
-    while(max_decimals--)
-      value *= 10;
-
+	//MH FIX underflow / hang issue
+	// Parse decimal part, if any
+	size_t rem = max_decimals;
+	if (rem && num_end < end && *num_end == '.') {
+	  ++num_end;
+	
+	  // Neem maximaal 'rem' decimalen mee in 'value'
+	  while (num_end < end && rem > 0 && *num_end >= '0' && *num_end <= '9') {
+		delay(0);
+		value = value * 10 + (*num_end - '0');
+		++num_end;
+		--rem;
+	  }
+	
+	  // (Optioneel) extra decimalen overslaan i.p.v. vastlopen of fout geven
+	  // -> hierdoor werkt 0000 met max_decimals=3 (we nemen 3 mee, 1 wordt genegeerd)
+	  while (num_end < end && *num_end >= '0' && *num_end <= '9') {
+		delay(0);
+		++num_end;
+	  }
+	
+	  // Alternatief: wil je strikt zijn? vervang bovenstaande while door:
+	  // if (num_end < end && *num_end >= '0' && *num_end <= '9')
+	  //   return res.fail(F("Too many decimals"), num_end);
+	}
+	
+	// Fill in missing decimals with zeroes
+	for (; rem > 0; --rem) {
+	  value *= 10;
+	}
+	//MH END FIX underflow / hang issue
 
     if (unit && *unit) {
       if (num_end >= end /*|| *num_end != '*'*/) //not in some SE meters

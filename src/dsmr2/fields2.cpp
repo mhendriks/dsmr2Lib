@@ -56,6 +56,10 @@ using namespace dsmr::fields;
 constexpr char units::none[];
 constexpr char units::kWh[];
 constexpr char units::Wh[];
+constexpr char units::kVArh[];
+constexpr char units::VArh[];
+constexpr char units::kVAr[];
+constexpr char units::VAr[];
 constexpr char units::kW[];
 constexpr char units::W[];
 constexpr char units::V[];
@@ -349,4 +353,66 @@ constexpr char mbus4_delivered_ntc::name_progmem[];
 constexpr ObisId mbus4_delivered_dbl::id;
 constexpr char mbus4_delivered_dbl::name_progmem[];
 //constexpr const __FlashStringHelper *mbus4_delivered_dbl::name;
+
+//BE A1 meters
+constexpr ObisId reactive_energy_q1::id;
+constexpr char reactive_energy_q1::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_energy_q1::name;
+
+constexpr ObisId reactive_energy_q2::id;
+constexpr char reactive_energy_q2::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_energy_q2::name;
+
+constexpr ObisId reactive_energy_q3::id;
+constexpr char reactive_energy_q3::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_energy_q3::name;
+
+constexpr ObisId reactive_energy_q4::id;
+constexpr char reactive_energy_q4::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_energy_q4::name;
+
+constexpr ObisId reactive_power_import::id;
+constexpr char reactive_power_import::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_import::name;
+
+constexpr ObisId reactive_power_export::id;
+constexpr char reactive_power_export::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_export::name;
+
+// Totaal reactieve energie
+constexpr ObisId reactive_energy_total_import::id;
+constexpr char reactive_energy_total_import::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_energy_total_import::name;
+
+constexpr ObisId reactive_energy_total_export::id;
+constexpr char reactive_energy_total_export::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_energy_total_export::name;
+
+// Per-fase reactief vermogen
+constexpr ObisId reactive_power_l1_import::id;
+constexpr char reactive_power_l1_import::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_l1_import::name;
+
+constexpr ObisId reactive_power_l1_export::id;
+constexpr char reactive_power_l1_export::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_l1_export::name;
+
+constexpr ObisId reactive_power_l2_import::id;
+constexpr char reactive_power_l2_import::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_l2_import::name;
+
+constexpr ObisId reactive_power_l2_export::id;
+constexpr char reactive_power_l2_export::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_l2_export::name;
+
+constexpr ObisId reactive_power_l3_import::id;
+constexpr char reactive_power_l3_import::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_l3_import::name;
+
+constexpr ObisId reactive_power_l3_export::id;
+constexpr char reactive_power_l3_export::name_progmem[];
+//constexpr const __FlashStringHelper *reactive_power_l3_export::name;
+
+
+
 
