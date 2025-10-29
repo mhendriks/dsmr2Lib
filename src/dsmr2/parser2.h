@@ -299,6 +299,17 @@ struct ObisIdParser {
     for (++part; part < 6; ++part)
       id.v[part] = 255;
 
+   // ----------  Toegevoegd: normaliseer kanaal B voor electriciteit ----------
+    // Veel DLMS-meters (CH/DE/AT) gebruiken 1-1:* i.p.v. 1-0:* voor dezelfde grootheden.
+    // Door B=1 → B=0 te mappen voor A=1 (electriciteit) blijven je bestaande 1-0:* matches werken.
+// #ifndef DSMR_KEEP_OBIS_CHANNEL   // zet deze define om normalisatie uit te zetten
+    if (id.v[0] == 1 && id.v[1] == 1) {
+      id.v[1] = 0;
+    }
+// #endif
+    // ---------------------------------------------------------------------------
+
+
     return res;
   }
 };
