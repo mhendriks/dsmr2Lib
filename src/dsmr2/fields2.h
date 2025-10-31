@@ -89,10 +89,11 @@ struct TimestampField : StringField<T, 12, 13> { };
 // efficient integer value. The unit() and int_unit() methods on
 // FixedField return the corresponding units for these values.
 struct FixedValue {
-  operator float() { return val();}
-  float val() { return _value / 1000.0;}
+  operator float() { return val(); }
+  float val() { return _value / 1000.0; }
   uint32_t int_val() { return _value; }
-
+//   void setFloat(float f)  { _value = lroundf(f * 1000.0f); }
+//   void setInt(uint32_t v)  { _value = v; }
   uint32_t _value;
 };
 
@@ -300,7 +301,7 @@ struct NameConverter {
 DEFINE_FIELD(identification, String, ObisId(255, 255, 255, 255, 255, 255), RawField);
 
 /* Version information for P1 output */
-DEFINE_FIELD(p1_version, String, ObisId(1, 3, 0, 2, 8), StringField, 2, 2);
+DEFINE_FIELD(p1_version, String, ObisId(1, 3, 0, 2, 8), StringField, 1, 2);
 
 
 /* Version information for P1 output (Belgium)*/
