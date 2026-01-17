@@ -125,20 +125,41 @@ struct TimestampedFixedValue : public FixedValue {
 
 // Some numerical values are prefixed with a timestamp. This is simply
 // both of them concatenated, e.g. 0-1:24.2.1(150117180000W)(00473.789*m3)
+// updated to support the switched order situations
 template <typename T, const char *_unit, const char *_int_unit>
 struct TimestampedFixedField : public FixedField<T, _unit, _int_unit> {
+
   ParseResult<void> parse(const char *str, const char *end) {
-    // First, parse timestamp
-    ParseResult<String> res = StringParser::parse_string(13, 13, str, end);
-    if (res.err)
-      return res;
+    // 1) Normal order: timestamp then value
+    ParseResult<String> ts = StringParser::parse_string(13, 13, str, end);
+    if (!ts.err) {
+      static_cast<T*>(this)->val().timestamp = ts.result;
+      return FixedField<T, _unit, _int_unit>::parse(ts.next, end);
+    }
 
-    static_cast<T*>(this)->val().timestamp = res.result;
+    // Optional: allow 12-digit timestamp (no W/S)
+    ts = StringParser::parse_string(12, 12, str, end);
+    if (!ts.err) {
+      static_cast<T*>(this)->val().timestamp = ts.result;
+      return FixedField<T, _unit, _int_unit>::parse(ts.next, end);
+    }
 
-    // Which is immediately followed by the numerical value
-    return FixedField<T, _unit, _int_unit>::parse(res.next, end);
+    // 2) Fallback order: value then timestamp (WalonIe variant)
+    auto resVal = FixedField<T, _unit, _int_unit>::parse(str, end);
+    if (resVal.err) return resVal;
+
+    // parse timestamp after the value
+    ts = StringParser::parse_string(13, 13, resVal.next, end);
+    if (ts.err) {
+      ts = StringParser::parse_string(12, 12, resVal.next, end);
+      if (ts.err) return ts;   // auto converts to ParseResult<void>
+    }
+
+    static_cast<T*>(this)->val().timestamp = ts.result;
+    return ts;                 // << fixes ParseResult<void> construction & sets next correctly
   }
 };
+
 
 // Some gas meters follow different specifications and output
 // something like this, e.g.:

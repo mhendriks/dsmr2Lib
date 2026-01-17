@@ -257,6 +257,14 @@ class P1Reader {
     }
 
     /**
+     * Clear all data from the buffer.
+     */
+    void clearAll() {
+        buffer = "";
+        _available = false;
+    }
+
+    /**
      * Clear any complete message from the buffer.
      */
     void clear() {
