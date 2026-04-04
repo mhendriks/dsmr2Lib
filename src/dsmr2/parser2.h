@@ -226,39 +226,43 @@ struct NumParser {
 	  //   return res.fail(F("Too many decimals"), num_end);
 	}
 	
-	// Fill in missing decimals with zeroes
-	for (; rem > 0; --rem) {
-	  value *= 10;
-	}
-	//MH END FIX underflow / hang issue
+		//MH END FIX underflow / hang issue
 
     if (unit && *unit) {
       if (num_end >= end /*|| *num_end != '*'*/) //not in some SE meters
-		return res.fail(F("Missing unit"), num_end);
-      if ( *num_end == '*' ) {
-		  const char *unit_start = ++num_end; // skip * ... not in some SE meters
+        return res.fail(F("Missing unit"), num_end);
+
+      if (*num_end == '*')
+        ++num_end; // skip * ... not in some SE meters
+
+      const char *actual_unit_start = num_end;
+      while (num_end < end && *num_end != ')') {
+        delay(0); // yield()
+        ++num_end;
       }
 
-      while(num_end < end && *num_end != ')' && *unit) {
-        delay(0); //  yield()
-        if (*num_end++ != *unit++)
-        {
-          //--AaW accept all unit's 
-          //--AaW don't raise an error 
-          //return res.fail((const __FlashStringHelper*)INVALID_UNIT, unit_start);
-        }
-      }
-      if (*unit)
-      {
-        //--AaW accept all unit's 
-        //--AaW don't raise an error 
-        //return res.fail((const __FlashStringHelper*)INVALID_UNIT, unit_start);
+      size_t actual_unit_len = num_end - actual_unit_start;
+      size_t expected_unit_len = strlen(unit);
+
+      // Accept meters that report the milli-variant of the expected
+      // base unit, e.g. mA instead of A. Internal storage for FixedField
+      // already uses milli-units, so values reported in milli-units
+      // should not be multiplied by 1000 again.
+      if (actual_unit_len == expected_unit_len + 1 &&
+          actual_unit_start[0] == 'm' &&
+          memcmp(actual_unit_start + 1, unit, expected_unit_len) == 0) {
+        rem = 0;
       }
     }
 
+    // Fill in missing decimals with zeroes after unit-based scaling
+    for (; rem > 0; --rem) {
+      value *= 10;
+    }
+
     if (num_end >= end || *num_end != ')')
-	      return res.fail(F("Extra data"), num_end);
-	
+      return res.fail(F("Extra data"), num_end);
+
     return res.succeed(value).until(num_end + 1); // Skip )
   }
 };
