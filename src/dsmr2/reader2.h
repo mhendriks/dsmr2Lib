@@ -40,6 +40,271 @@
 namespace dsmr {
 
 /**
+ * Lightweight state machine that accumulates one P1 telegram into a caller
+ * supplied fixed-size buffer. The stored data matches P1Reader::raw(): it
+ * contains the bytes between '/' and '!', excluding both markers and excluding
+ * the checksum.
+ */
+class P1PacketAccumulator {
+  public:
+    enum class Result : uint8_t {
+      WAITING,
+      STARTED,
+      COMPLETE,
+      CHECKSUM_MISMATCH,
+      MALFORMED_CHECKSUM,
+      BUFFER_OVERFLOW,
+    };
+
+    P1PacketAccumulator(char *buffer, size_t capacity, bool checksum = true)
+      : buffer(buffer), capacity(capacity), checksum(checksum) {
+      reset();
+    }
+
+    void doChecksum(bool checksum) {
+      this->checksum = checksum;
+      reset();
+    }
+
+    Result process(uint8_t c) {
+      switch (state) {
+        case State::WAITING_STATE:
+          if (c == '/') {
+            start();
+            return Result::STARTED;
+          }
+          return Result::WAITING;
+
+        case State::READING_STATE:
+          crc = _crc16_update(crc, c);
+          if (c == '!') {
+            if (!checksum) {
+              state = State::WAITING_STATE;
+              return Result::COMPLETE;
+            }
+            state = State::CHECKSUM_STATE;
+            crc_pos = 0;
+            return Result::WAITING;
+          }
+
+          if (length + 1 >= capacity) {
+            reset();
+            return Result::BUFFER_OVERFLOW;
+          }
+
+          buffer[length++] = (char)c;
+          buffer[length] = '\0';
+          return Result::WAITING;
+
+        case State::CHECKSUM_STATE:
+          crc_buf[crc_pos++] = (char)c;
+          if (crc_pos < CrcParser::CRC_LEN)
+            return Result::WAITING;
+
+          state = State::WAITING_STATE;
+          crc_buf[CrcParser::CRC_LEN] = '\0';
+          {
+            ParseResult<uint16_t> parsed = CrcParser::parse(crc_buf, crc_buf + CrcParser::CRC_LEN);
+            if (parsed.err)
+              return Result::MALFORMED_CHECKSUM;
+            if (parsed.result != crc)
+              return Result::CHECKSUM_MISMATCH;
+          }
+          return Result::COMPLETE;
+      }
+
+      return Result::WAITING;
+    }
+
+    void reset() {
+      state = State::WAITING_STATE;
+      length = 0;
+      crc = 0;
+      crc_pos = 0;
+      if (capacity)
+        buffer[0] = '\0';
+    }
+
+    const char *data() const {
+      return buffer;
+    }
+
+    size_t size() const {
+      return length;
+    }
+
+    uint16_t GetCRC() const {
+      return crc;
+    }
+
+  protected:
+    enum class State : uint8_t {
+      WAITING_STATE,
+      READING_STATE,
+      CHECKSUM_STATE,
+    };
+
+    void start() {
+      state = State::READING_STATE;
+      length = 0;
+      crc = _crc16_update(0, '/');
+      crc_pos = 0;
+      if (capacity)
+        buffer[0] = '\0';
+    }
+
+    char *buffer;
+    size_t capacity;
+    bool checksum;
+    State state;
+    size_t length;
+    uint16_t crc;
+    char crc_buf[CrcParser::CRC_LEN + 1];
+    uint8_t crc_pos;
+};
+
+template<size_t MaxTelegramLength>
+class P1FixedReader {
+  public:
+    P1FixedReader(Stream *stream, uint8_t req_pin, bool checksum = true)
+      : stream(stream), req_pin(req_pin), once(false), state(State::DISABLED_STATE),
+        _available(false), accumulator(buffer, lengthof(buffer), checksum) {
+      pinMode(req_pin, OUTPUT);
+      digitalWrite(req_pin, LOW);
+    }
+
+    void doChecksum(bool checksum) {
+      accumulator.doChecksum(checksum);
+      _available = false;
+    }
+
+    void enable(bool once) {
+      digitalWrite(this->req_pin, HIGH);
+      this->state = State::WAITING_STATE;
+      this->once = once;
+    }
+
+    void disable() {
+      digitalWrite(this->req_pin, LOW);
+      this->state = State::DISABLED_STATE;
+      if (!_available)
+        accumulator.reset();
+      while(this->stream->read() >= 0) /* nothing */;
+    }
+
+    bool available() const {
+      return _available;
+    }
+
+    bool loop() {
+      while (true) {
+        int c = this->stream->read();
+        if (c < 0)
+          return _available;
+
+        if (state == State::DISABLED_STATE)
+          continue;
+
+        P1PacketAccumulator::Result res = accumulator.process((uint8_t)c);
+        if (res == P1PacketAccumulator::Result::STARTED) {
+          _available = false;
+        }
+
+        if (res == P1PacketAccumulator::Result::COMPLETE) {
+          _available = true;
+          if (once)
+            disable();
+          return true;
+        }
+
+        if (res == P1PacketAccumulator::Result::BUFFER_OVERFLOW ||
+            res == P1PacketAccumulator::Result::CHECKSUM_MISMATCH ||
+            res == P1PacketAccumulator::Result::MALFORMED_CHECKSUM) {
+          _available = false;
+        }
+
+        delay(0);
+      }
+    }
+
+    const char *raw() const {
+      return accumulator.data();
+    }
+
+    size_t rawLength() const {
+      return accumulator.size();
+    }
+
+    uint16_t GetCRC() const {
+      return accumulator.GetCRC();
+    }
+
+    String CompleteRaw() const {
+      if (rawLength() == 0)
+        return "";
+
+      char crc_str[5];
+      sprintf(crc_str, "%04X", GetCRC());
+
+      String res;
+      res.reserve(rawLength() + 6);
+      res += '/';
+      concat_hack(res, raw(), rawLength());
+      res += '!';
+      res += crc_str;
+      return res;
+    }
+
+    String GetCRC_str() const {
+      char buf[5];
+      sprintf(buf, "%04X", GetCRC());
+      return buf;
+    }
+
+    template<typename... Ts>
+    bool parse(ParsedData<Ts...> *data, String *err, bool = false) {
+      const char *str = raw(), *end = raw() + rawLength();
+      ParseResult<void> res = P1Parser::parse_data(data, str, end);
+
+      if (res.err && err)
+        *err = res.fullError(str, end);
+
+      clear();
+      return res.err == NULL;
+    }
+
+    void clearAll() {
+      accumulator.reset();
+      _available = false;
+    }
+
+    void clear() {
+      if (_available) {
+        accumulator.reset();
+        _available = false;
+      }
+    }
+
+    void ChangeStream(Stream *new_stream) {
+      stream = new_stream;
+      clearAll();
+    }
+
+  protected:
+    Stream *stream;
+    uint8_t req_pin;
+    enum class State : uint8_t {
+      DISABLED_STATE,
+      WAITING_STATE,
+    };
+    bool once;
+    State state;
+    bool _available;
+    char buffer[MaxTelegramLength + 1];
+    P1PacketAccumulator accumulator;
+};
+
+/**
  * Controls the request pin on the P1 port to enable (periodic)
  * transmission of messages and reads those messages.
  *
@@ -230,6 +495,10 @@ class P1Reader {
      */
     const String &raw() {
       return buffer;
+    }
+
+    size_t rawLength() const {
+      return buffer.length();
     }
 
     /**

@@ -81,7 +81,57 @@ struct StringField : ParsedField<T> {
 // cannot really do any calculation with those values). So we just parse
 // into a string for now.
 template <typename T>
-struct TimestampField : StringField<T, 12, 13> { };
+struct TimestampField : StringField<T, 12, 13> {
+  static int8_t hexNibble(char value) {
+    if (value >= '0' && value <= '9') return value - '0';
+    if (value >= 'A' && value <= 'F') return value - 'A' + 10;
+    if (value >= 'a' && value <= 'f') return value - 'a' + 10;
+    return -1;
+  }
+
+  static bool hexByte(const String& value, size_t offset, uint8_t& result) {
+    if (offset + 1 >= value.length()) return false;
+    const int8_t high = hexNibble(value[offset]);
+    const int8_t low = hexNibble(value[offset + 1]);
+    if (high < 0 || low < 0) return false;
+    result = (uint8_t)((high << 4) | low);
+    return true;
+  }
+
+  ParseResult<void> parse(const char *str, const char *end) {
+    ParseResult<String> regular = StringParser::parse_string(12, 13, str, end);
+    if (!regular.err) {
+      static_cast<T*>(this)->val() = regular.result;
+      return regular;
+    }
+
+    // MCS301 uses the 12-byte DLMS/COSEM date-time octet string:
+    // year(2), month, day, weekday, hour, minute, second, hundredths,
+    // deviation(2), clock status. Convert it to DSMR YYMMDDhhmmssS/W.
+    ParseResult<String> dlms = StringParser::parse_string(24, 24, str, end);
+    if (dlms.err) return dlms;
+
+    uint8_t bytes[12];
+    for (size_t i = 0; i < sizeof(bytes); i++) {
+      if (!hexByte(dlms.result, i * 2, bytes[i]))
+        return ParseResult<void>().fail(F("Invalid DLMS date-time"), str + 1 + i * 2);
+    }
+
+    const uint16_t year = ((uint16_t)bytes[0] << 8) | bytes[1];
+    if (year < 2000 || year > 2099 ||
+        bytes[2] < 1 || bytes[2] > 12 || bytes[3] < 1 || bytes[3] > 31 ||
+        bytes[5] > 23 || bytes[6] > 59 || bytes[7] > 59)
+      return ParseResult<void>().fail(F("Invalid DLMS date-time"), str + 1);
+
+    char converted[14];
+    snprintf(converted, sizeof(converted), "%02u%02u%02u%02u%02u%02u%c",
+             (unsigned)(year % 100), (unsigned)bytes[2], (unsigned)bytes[3],
+             (unsigned)bytes[5], (unsigned)bytes[6], (unsigned)bytes[7],
+             (bytes[11] & 0x80) ? 'S' : 'W');
+    static_cast<T*>(this)->val() = converted;
+    return ParseResult<void>().until(dlms.next);
+  }
+};
 
 // Value that is parsed as a three-decimal float, but stored as an
 // integer (by multiplying by 1000). Supports val() (or implicit cast to
@@ -244,6 +294,33 @@ struct IntField : ParsedField<T> {
   }
 
   static const char *unit() { return _unit; }
+};
+
+// MCS301 emits () for an absent M-Bus device. Keep this compatibility
+// limited to M-Bus device-type fields; empty integer values elsewhere
+// remain parser errors.
+template <typename T, const char *_unit>
+struct OptionalMbusIntField : IntField<T, _unit> {
+  ParseResult<void> parse(const char *str, const char *end) {
+    if (end - str == 2 && str[0] == '(' && str[1] == ')') {
+      static_cast<T*>(this)->present() = false;
+      return ParseResult<void>().until(end);
+    }
+    return IntField<T, _unit>::parse(str, end);
+  }
+};
+
+// MCS301 emits (0) when an absent M-Bus channel has no timestamped value.
+// Treat only this exact sentinel as absent and parse all real readings strictly.
+template <typename T, const char *_unit, const char *_int_unit>
+struct OptionalMbusTimestampedFixedField : TimestampedFixedField<T, _unit, _int_unit> {
+  ParseResult<void> parse(const char *str, const char *end) {
+    if (end - str == 3 && str[0] == '(' && str[1] == '0' && str[2] == ')') {
+      static_cast<T*>(this)->present() = false;
+      return ParseResult<void>().until(end);
+    }
+    return TimestampedFixedField<T, _unit, _int_unit>::parse(str, end);
+  }
 };
 
 // A RawField is not parsed, the entire value (including any
@@ -469,7 +546,7 @@ DEFINE_FIELD(power_returned_l3, FixedValue, ObisId(1, 0, 62, 7, 0), FixedField, 
 
 
 /* Device-Type */
-DEFINE_FIELD(mbus1_device_type,   uint16_t, ObisId(0, 1, 24, 1, 0), IntField, units::none);
+DEFINE_FIELD(mbus1_device_type,   uint16_t, ObisId(0, 1, 24, 1, 0), OptionalMbusIntField, units::none);
 /* Equipment identifier (temperature corrected) */
 DEFINE_FIELD(mbus1_equipment_id_tc,    String, ObisId(0, 1, 96, 1, 0), StringField, 0, 96);
 /* Equipment identifier (Not Temp. Corrected) */
@@ -479,7 +556,7 @@ DEFINE_FIELD(mbus1_valve_position, uint8_t, ObisId(0, 1, 24, 4, 0), IntField, un
 /* Last 5-minute value (temperature converted), delivered to client
  * in m3, including decimal values and capture time (Note: 4.x spec has
  * "hourly value") */
-DEFINE_FIELD(mbus1_delivered, TimestampedFixedValue, ObisId(0, 1, 24, 2, 1), TimestampedFixedField, units::m3, units::dm3);
+DEFINE_FIELD(mbus1_delivered, TimestampedFixedValue, ObisId(0, 1, 24, 2, 1), OptionalMbusTimestampedFixedField, units::m3, units::dm3);
 // OBIS: Last value of ‘not temperature corrected’ volume, including decimal values and capture time
 DEFINE_FIELD(mbus1_delivered_ntc, TimestampedFixedValue, ObisId(0, 1, 24, 2, 3), TimestampedFixedField, units::m3, units::dm3);
 /* Last hourly value (temperature compensated or not, depending on the display
@@ -489,7 +566,7 @@ DEFINE_FIELD(mbus1_delivered_dbl, TimestampedFixedValue, ObisId(0, 1, 24, 3, 0),
 // DEFINE_FIELD(mbus1_delivered_dbl, TimestampedFixedValue, ObisId(0, 1, 24, 3, 0), DoubleLineTimestampedFixedField, units::none, units::none); //Special for Maarten Koppe
 
 /* Device-Type */
-DEFINE_FIELD(mbus2_device_type, uint16_t, ObisId(0, 2, 24, 1, 0), IntField, units::none);
+DEFINE_FIELD(mbus2_device_type, uint16_t, ObisId(0, 2, 24, 1, 0), OptionalMbusIntField, units::none);
 /* Equipment identifier (temperature corrected) */
 DEFINE_FIELD(mbus2_equipment_id_tc, String, ObisId(0, 2, 96, 1, 0), StringField, 0, 96);
 /* Equipment identifier (Not Temp. Corrected) */
@@ -498,7 +575,7 @@ DEFINE_FIELD(mbus2_equipment_id_ntc,  String, ObisId(0, 2, 96, 1, 1), StringFiel
 DEFINE_FIELD(mbus2_valve_position, uint8_t, ObisId(0, 2, 24, 4, 0), IntField, units::none);
 /* Last 5-minute Meter reading and capture time
  * (Note: 4.x spec has "hourly meter reading") */
-DEFINE_FIELD(mbus2_delivered, TimestampedFixedValue, ObisId(0, 2, 24, 2, 1), TimestampedFixedField, units::GJ, units::MJ);
+DEFINE_FIELD(mbus2_delivered, TimestampedFixedValue, ObisId(0, 2, 24, 2, 1), OptionalMbusTimestampedFixedField, units::GJ, units::MJ);
 // OBIS: Last value of ‘not temperature corrected’ volume, including decimal values and capture time
 DEFINE_FIELD(mbus2_delivered_ntc, TimestampedFixedValue, ObisId(0, 2, 24, 2, 3), TimestampedFixedField, units::m3, units::dm3);
 /* Last hourly value (temperature compensated or not, depending on the display
@@ -508,7 +585,7 @@ DEFINE_FIELD(mbus2_delivered_dbl, TimestampedFixedValue, ObisId(0, 2, 24, 3, 0),
 
 
 /* Device-Type */
-DEFINE_FIELD(mbus3_device_type, uint16_t, ObisId(0, 3, 24, 1, 0), IntField, units::none);
+DEFINE_FIELD(mbus3_device_type, uint16_t, ObisId(0, 3, 24, 1, 0), OptionalMbusIntField, units::none);
 /* Equipment identifier  (temperature corrected) */
 DEFINE_FIELD(mbus3_equipment_id_tc, String, ObisId(0, 3, 96, 1, 0), StringField, 0, 96);
 /* Equipment identifier (Not Temp. Corrected) */
@@ -517,7 +594,7 @@ DEFINE_FIELD(mbus3_equipment_id_ntc,  String, ObisId(0, 3, 96, 1, 1), StringFiel
 DEFINE_FIELD(mbus3_valve_position, uint8_t, ObisId(0, 3, 24, 4, 0), IntField, units::none);
 /* Last 5-minute Meter reading and capture time
  * (Note: 4.x spec has "hourly meter reading") */
-DEFINE_FIELD(mbus3_delivered, TimestampedFixedValue, ObisId(0, 3, 24, 2, 1), TimestampedFixedField, units::m3, units::dm3);
+DEFINE_FIELD(mbus3_delivered, TimestampedFixedValue, ObisId(0, 3, 24, 2, 1), OptionalMbusTimestampedFixedField, units::m3, units::dm3);
 // OBIS: Last value of ‘not temperature corrected’ volume, including decimal values and capture time
 DEFINE_FIELD(mbus3_delivered_ntc, TimestampedFixedValue, ObisId(0, 3, 24, 2, 3), TimestampedFixedField, units::m3, units::dm3);
 /* Last hourly value (temperature compensated or not, depending on the display
@@ -526,7 +603,7 @@ DEFINE_FIELD(mbus3_delivered_ntc, TimestampedFixedValue, ObisId(0, 3, 24, 2, 3),
 DEFINE_FIELD(mbus3_delivered_dbl, TimestampedFixedValue, ObisId(0, 3, 24, 3, 0), DoubleLineTimestampedFixedField, units::m3, units::dm3);
 
 /* Device-Type */
-DEFINE_FIELD(mbus4_device_type, uint16_t, ObisId(0, 4, 24, 1, 0), IntField, units::none);
+DEFINE_FIELD(mbus4_device_type, uint16_t, ObisId(0, 4, 24, 1, 0), OptionalMbusIntField, units::none);
 /* Equipment identifier  (temperature corrected) */
 DEFINE_FIELD(mbus4_equipment_id_tc, String, ObisId(0, 4, 96, 1, 0), StringField, 0, 96);
 /* Equipment identifier (Not Temp. Corrected) */
@@ -535,7 +612,7 @@ DEFINE_FIELD(mbus4_equipment_id_ntc,  String, ObisId(0, 4, 96, 1, 1), StringFiel
 DEFINE_FIELD(mbus4_valve_position, uint8_t, ObisId(0, 4, 24, 4, 0), IntField, units::none);
 /* Last 5-minute Meter reading and capture time (e.g. mbus
  * E meter) (Note: 4.x spec has "hourly meter reading") */
-DEFINE_FIELD(mbus4_delivered, TimestampedFixedValue, ObisId(0, 4, 24, 2, 1), TimestampedFixedField, units::m3, units::dm3);
+DEFINE_FIELD(mbus4_delivered, TimestampedFixedValue, ObisId(0, 4, 24, 2, 1), OptionalMbusTimestampedFixedField, units::m3, units::dm3);
 // OBIS: Last value of ‘not temperature corrected’ volume , including decimal values and capture time
 DEFINE_FIELD(mbus4_delivered_ntc, TimestampedFixedValue, ObisId(0, 4, 24, 2, 3), TimestampedFixedField, units::m3, units::dm3);
 /* Last hourly value (temperature compensated or not, depending on the display

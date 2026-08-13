@@ -295,18 +295,20 @@ void setup()
   
   Serial.println("\n\nAnd now it begins ...\n");
 
+#if defined(ARDUINO_ARCH_ESP8266)
   Serial.println(ESP.getResetReason());
-  if (   ESP.getResetReason() == "Exception" 
+  if (   ESP.getResetReason() == "Exception"
       || ESP.getResetReason() == "Software Watchdog"
       || ESP.getResetReason() == "Soft WDT reset"
-      ) 
+      )
   {
-    while (1) 
+    while (1)
     {
       delay(500);
       digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     }
   }
+#endif
 
 
 #if defined(READSLIMMEMETER)

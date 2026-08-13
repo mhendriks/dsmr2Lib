@@ -222,6 +222,19 @@ Parsing these into something like a UNIX timestamp is tricky (think
 leap years and seconds) and of limited use, so this just keeps the
 original format.
 
+Reading messages
+----------------
+`P1Reader` keeps the original Arduino `String` based API for existing
+sketches. For memory-constrained or long-running sketches, there is also
+`P1FixedReader<MaxTelegramLength>`. This reader uses a fixed-size buffer
+and the `P1PacketAccumulator` state machine, so receiving a telegram no
+longer grows an Arduino `String` on the heap.
+
+The fixed reader exposes `raw()` as a `const char *` plus `rawLength()`.
+The stored raw data is the same payload shape as `P1Reader::raw()`:
+everything between `/` and `!`, without the checksum. Parsing still uses
+the existing field parser, so parser behavior stays the same.
+
 Connecting the P1 port
 ----------------------
 The P1 port essentially consists of three parts:
